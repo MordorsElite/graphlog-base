@@ -26,6 +26,8 @@
 #include <zlib.h>
 #include "lib/common/filesystem.hpp"
 
+#include <cstring>
+
 using namespace std;
 
 #undef CURRENT_ERROR_TYPE
