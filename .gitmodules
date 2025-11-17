@@ -1,4 +1,4 @@
 [submodule "lib/common"]
 	path = lib/common
-	url = https://github.com/whatsthecraic/libcommon
+	url = https://github.com/MordorsElite/libcommon_latency_chunks
 	branch = master
