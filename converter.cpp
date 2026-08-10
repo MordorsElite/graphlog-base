@@ -81,8 +81,6 @@ Converter::Converter(const std::string& path_input_graph, const std::string& pat
     for (const auto& it : map_frequencies) {
         array_frequencies[it.second.m_offset] = it.second; // copy (offset, frequency)
     }
-    init_counting_tree(array_frequencies.get());
-
     init_edges_final_no_permute(ptr_weighted_edges);
 
     init_writer(path_output_log);
@@ -167,25 +165,6 @@ void Converter::init_read_input_graph(void* ptr_array_edges, void* ptr_frequenci
 
     timer.stop();
     LOG("Input graph parsed in " << timer);
-}
-
-void Converter::init_counting_tree(void* ptr_array_frequencies){
-    LOG("Initialising the counting tree for " << num_vertices() << " vertices ... ");
-    Timer timer;
-    timer.start();
-
-    assert(ptr_array_frequencies != nullptr);
-    InitVertexRecord* __restrict array_frequencies = reinterpret_cast<InitVertexRecord*>(ptr_array_frequencies);
-
-    m_frequencies = new CountingTree(num_vertices());
-    for(uint64_t i = 0, sz = num_vertices(); i < sz ; i++){
-        m_frequencies->set(array_frequencies[i].m_offset, array_frequencies[i].m_frequency);
-    }
-
-//    m_frequencies->dump();
-
-    timer.stop();
-    LOG("Counting tree created in " << timer);
 }
 
 void Converter::init_edges_final_no_permute(std::unique_ptr<WeightedEdge[]>& ptr_edges_final) {
