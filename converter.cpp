@@ -15,7 +15,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "generator.hpp"
+#include "converter.hpp"
 
 #include <algorithm>
 #include <cassert>
@@ -45,7 +45,7 @@ extern std::mutex g_mutex_log;
 #define LOG(msg) { std::scoped_lock xlock_log(g_mutex_log); std::cout << msg << std::endl; }
 
 //#define DEBUG
-#define COUT_DEBUG_FORCE(msg) LOG("[Generator::" << __FUNCTION__ << "] " << msg)
+#define COUT_DEBUG_FORCE(msg) LOG("[Converter::" << __FUNCTION__ << "] " << msg)
 #if defined(DEBUG)
 #define COUT_DEBUG(msg) COUT_DEBUG_FORCE(msg)
 #else
@@ -66,7 +66,7 @@ struct InitVertexRecord {
 };
 }
 
-Generator::Generator(const std::string& path_input_graph, const std::string& path_output_log, Writer& writer, double sf_frequency, double ef_vertices, double ef_edges, double aging_factor, uint64_t seed) :
+Converter::Converter(const std::string& path_input_graph, const std::string& path_output_log, Writer& writer, double sf_frequency, double ef_vertices, double ef_edges, double aging_factor, uint64_t seed, const std::string& path_input_vertices_final, const std::string& path_input_vertices_edges) :
     m_writer(writer), m_num_operations(0), m_seed(seed), m_random(m_seed){
     unordered_map<uint64_t, InitVertexRecord> map_frequencies;
     unique_ptr<WeightedEdge[]> ptr_weighted_edges;
@@ -85,7 +85,7 @@ Generator::Generator(const std::string& path_input_graph, const std::string& pat
     init_writer(path_output_log);
 }
 
-Generator::~Generator(){
+Converter::~Converter(){
     delete m_frequencies; m_frequencies = nullptr;
     delete[] m_vertices; m_vertices = nullptr;
 
@@ -98,7 +98,7 @@ Generator::~Generator(){
     }
 }
 
-void Generator::init_read_input_graph(void* ptr_array_edges, void* ptr_frequencies, const std::string& path_input_graph, double expansion_factor_vertices) {
+void Converter::init_read_input_graph(void* ptr_array_edges, void* ptr_frequencies, const std::string& path_input_graph, double expansion_factor_vertices) {
     LOG("Reading the input graph from: " << path_input_graph << " ... ");
     Timer timer;
     timer.start();
@@ -162,7 +162,7 @@ void Generator::init_read_input_graph(void* ptr_array_edges, void* ptr_frequenci
     LOG("Input graph parsed in " << timer);
 }
 
-void Generator::init_temporary_vertices(void* ptr_map_frequencies, void* ptr_array_frequencies, double sf_frequency){
+void Converter::init_temporary_vertices(void* ptr_map_frequencies, void* ptr_array_frequencies, double sf_frequency){
     LOG("Generating " << num_temporary_vertices() << " (" << 100.0 * num_temporary_vertices() / num_vertices() << " %) non final vertices ... ");
     Timer timer;
     timer.start();
@@ -226,7 +226,7 @@ void Generator::init_temporary_vertices(void* ptr_map_frequencies, void* ptr_arr
     LOG("Vertices generated in " << timer);
 }
 
-void Generator::init_counting_tree(void* ptr_array_frequencies){
+void Converter::init_counting_tree(void* ptr_array_frequencies){
     LOG("Initialising the counting tree for " << num_vertices() << " vertices ... ");
     Timer timer;
     timer.start();
@@ -245,7 +245,7 @@ void Generator::init_counting_tree(void* ptr_array_frequencies){
     LOG("Counting tree created in " << timer);
 }
 
-void Generator::init_permute_edges_final(std::unique_ptr<WeightedEdge[]>& ptr_edges_final){
+void Converter::init_permute_edges_final(std::unique_ptr<WeightedEdge[]>& ptr_edges_final){
     LOG("Permuting the edges in the final graph ... ");
     Timer timer;
     timer.start();
@@ -278,7 +278,7 @@ void Generator::init_permute_edges_final(std::unique_ptr<WeightedEdge[]>& ptr_ed
     LOG("Permutation completed in " << timer);
 }
 
-void Generator::init_writer(const string& path_output){
+void Converter::init_writer(const string& path_output){
     LOG("Initialising the log file ....");
     Timer timer;
     timer.start();
@@ -305,7 +305,7 @@ void Generator::init_writer(const string& path_output){
  *                                                                           *
  *****************************************************************************/
 
-uint64_t Generator::num_blocks_in_final_edges() const {
+uint64_t Converter::num_blocks_in_final_edges() const {
     return (m_num_edges_final / m_num_final_edges_per_block) + (m_num_edges_final % m_num_final_edges_per_block != 0);
 }
 
@@ -314,7 +314,7 @@ uint64_t Generator::num_blocks_in_final_edges() const {
  *  Generate the operations                                                  *
  *                                                                           *
  *****************************************************************************/
-uint64_t Generator::generate0() {
+uint64_t Converter::generate0() {
     cout << "Generating " << m_num_operations << " operations ..." << endl;
     Timer timer;
     timer.start();
@@ -477,7 +477,7 @@ uint64_t Generator::generate0() {
     return num_ops_performed;
 }
 
-void Generator::generate(){
+void Converter::generate(){
     uint64_t num_ops_performed = generate0(); // wait for the output buffer to complete...
     m_writer.write_num_edges(num_ops_performed);
 }

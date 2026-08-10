@@ -29,12 +29,12 @@
 
 class Writer; // forward decl.
 
-class Generator {
+class Converter {
     Writer& m_writer; // serialise the operations in the log file
 
     uint64_t m_num_operations; // total number of operations (insertions/deletions of edges) to create
     uint64_t m_num_max_edges; // max number of edges that can be stored in the graph
-    const uint64_t m_seed; // random generator seed
+    const uint64_t m_seed; // random Converter seed
 
     uint64_t* m_vertices = nullptr; // vertices ID
     uint64_t m_num_vertices_final = 0; // num vertices that actually belong to the final graph
@@ -55,15 +55,15 @@ class Generator {
     // total number of blocks in the final edges
     uint64_t num_blocks_in_final_edges() const;
 
-    // Actual generator, return the number of operations performed
+    // Actual Converter, return the number of operations performed
     uint64_t generate0();
 
 public:
     // Constructor
-    Generator(const std::string& path_input_graph, const std::string& path_output_log, Writer& writer, double sf_frequencies, double ef_vertices, double ef_edges, double aging_factor, uint64_t seed);
+    Converter(const std::string& path_input_graph, const std::string& path_output_log, Writer& writer, double sf_frequencies, double ef_vertices, double ef_edges, double aging_factor, uint64_t seed, const std::string& path_input_vertices_final, const std::string& path_input_vertices_edges);
 
     // Destructor
-    ~Generator();
+    ~Converter();
 
     // Generate the operations to perform
     void generate();
