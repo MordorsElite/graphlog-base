@@ -71,10 +71,10 @@ Converter::Converter(const std::string& path_input_graph, const std::string& pat
     unordered_map<uint64_t, InitVertexRecord> map_frequencies;
     unique_ptr<WeightedEdge[]> ptr_weighted_edges;
 
-    init_read_input_graph(&ptr_weighted_edges, &map_frequencies, path_input_graph, input_num_vertices_final);
-
+    init_read_input_graph(&ptr_weighted_edges, &map_frequencies, path_input_graph, input_num_vertices_final, input_num_edges_final);
+    
     m_num_max_edges = input_num_edges_final;
-    m_num_operations = m_num_edges_final;
+    m_num_operations = m_num_edges_total;
 
     unique_ptr<InitVertexRecord[]> array_frequencies { new InitVertexRecord[num_vertices()] };
     
@@ -99,13 +99,13 @@ Converter::~Converter(){
     }
 }
 
-void Converter::init_read_input_graph(void* ptr_array_edges, void* ptr_frequencies, const std::string& path_input_graph, uint64_t input_num_vertices_final) {
+void Converter::init_read_input_graph(void* ptr_array_edges, void* ptr_frequencies, const std::string& path_input_graph, uint64_t input_num_vertices_final, uint64_t input_num_edges_final) {
     LOG("Reading the input graph from: " << path_input_graph << " ... ");
     Timer timer;
     timer.start();
 
     assert(ptr_array_edges != nullptr);
-    auto& ptr_edges_final = *reinterpret_cast<unique_ptr<WeightedEdge[]>*>(ptr_array_edges);
+    auto& ptr_edges_total = *reinterpret_cast<unique_ptr<WeightedEdge[]>*>(ptr_array_edges);
     assert(ptr_frequencies != nullptr);
     auto& frequencies = *reinterpret_cast<unordered_map<uint64_t, InitVertexRecord>*>(ptr_frequencies);
 
@@ -114,21 +114,21 @@ void Converter::init_read_input_graph(void* ptr_array_edges, void* ptr_frequenci
 
     string prop_num_vertices = reader.get_property("meta.vertices");
     uint64_t total_vertices_in_input = stoi(prop_num_vertices);
-
     m_num_vertices_final = input_num_vertices_final;
-    string prop_num_edges = reader.get_property("meta.edges");
     m_num_vertices_temporary = total_vertices_in_input - input_num_vertices_final;
 
+    string prop_num_edges = reader.get_property("meta.edges");
+    m_num_edges_total = stoi(prop_num_edges);
+    m_num_edges_final = input_num_edges_final;
     if(num_vertices() > std::numeric_limits<uint32_t>::max()) {
         ERROR("Too many vertices: " << num_vertices() << ", vertices in the final graph: " << num_final_vertices());
     }
 
-    m_num_edges_final = stoi(prop_num_edges);
     COUT_DEBUG("num vertices final graph: " << num_final_vertices() << ", num edges final graph: " << m_num_edges_final);
 
     m_vertices = new uint64_t[num_vertices()];
-    ptr_edges_final.reset( new WeightedEdge[m_num_edges_final] );
-    WeightedEdge* __restrict edges_final = ptr_edges_final.get();
+    ptr_edges_total.reset( new WeightedEdge[m_num_edges_total] );
+    WeightedEdge* __restrict edges_final = ptr_edges_total.get();
 
     uint32_t vertex_next = 0;
     uint64_t edge_next = 0;
@@ -167,12 +167,12 @@ void Converter::init_read_input_graph(void* ptr_array_edges, void* ptr_frequenci
     LOG("Input graph parsed in " << timer);
 }
 
-void Converter::init_edges_final_no_permute(std::unique_ptr<WeightedEdge[]>& ptr_edges_final) {
+void Converter::init_edges_final_no_permute(std::unique_ptr<WeightedEdge[]>& ptr_edges_total) {
     LOG("Converting the final edges into blocks ... ");
     Timer timer;
     timer.start();
 
-    WeightedEdge* edges = ptr_edges_final.get();
+    WeightedEdge* edges = ptr_edges_total.get();
 
     uint64_t num_blocks = num_blocks_in_final_edges();
     m_edges_final = (WeightedEdge**)calloc(num_blocks, sizeof(WeightedEdge*));
