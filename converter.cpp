@@ -346,119 +346,30 @@ uint64_t Converter::generate0() {
              );
         }
 
-        // shall we perform an insertion or a deletion ?
-        if (temporary_edges.empty() || (edges_stored.size() < m_num_max_edges &&
-            (num_ops_performed + num_missing_final_edges + temporary_edges.size() <= m_num_operations))) {
-            // the condition above is not ideal: if we insert a new `temporary' edge, then the number of deletions also rises
+        //-- Directly insert all operations --//
 
-            // this is an insertion, okay. Then should it be a final or a temporary edge?
-            if ((num_missing_final_edges > 0 && (num_ops_performed + num_missing_final_edges + temporary_edges.size() >= m_num_operations)) ||
-                (edges_final_position < (static_cast<double>(num_ops_performed) / m_num_operations) * m_num_edges_final) ){
-
-                // retrieve the next block of final edges
-                if (edges_final_offset >= edges_final_block_sz) {
-                    if (edges_final_block >= 0) {
-                        COUT_DEBUG("Deallocating a block of final edges " << edges_final_block << "/" << num_blocks_in_final_edges() << " ...");
-                        free(m_edges_final[edges_final_block]);
-                        m_edges_final[edges_final_block] = nullptr;
-                    }
-
-                    edges_final_block++;
-                    bool last_block = (edges_final_block == num_blocks_in_final_edges() - 1);
-                    edges_final_block_sz = (last_block ? m_num_edges_final - edges_final_block * m_num_final_edges_per_block : m_num_final_edges_per_block);
-                    edges_final_offset = 0;
-                }
-
-                // insert a final edge
-                WeightedEdge edge_final = m_edges_final[edges_final_block][edges_final_offset];
-                edges_final_position++;
-                edges_final_offset++;
-
-                // if we previously inserted this edge as a temporary edge, remove it first
-                auto it = edges_stored.find(edge_final.edge());
-                if (it != edges_stored.end()) {
-                    assert(it->second > 0 && "0 is reserved for the final edges. If it's already present, then the loaded graph has duplicate edges");
-                    // The (a,b)-tree may contain multiple edges with the same key (duplicates). In case we removed the
-                    // wrong edge, reinsert it with a new key
-                    Edge edge_removed;
-                    while (temporary_edges.remove(it->second, &edge_removed) && edge_removed != edge_final.edge()) {
-                        uint64_t new_key = unif_uint64_t(m_random);
-                        temporary_edges.insert(new_key, edge_removed);
-                        edges_stored[edge_removed] = new_key;
-                    };
-                    assert(edge_removed == edge_final.edge() && "Cannot find the previous temporary edge");
-
-                    // emit a deletion
-                    output.emit(m_vertices[ edge_final.source() ], m_vertices[ edge_final.destination() ], -1);
-                    num_ops_performed++;
-
-                };
-
-                output.emit(m_vertices[ edge_final.source() ], m_vertices[ edge_final.destination() ], edge_final.weight());
-                edges_stored[edge_final.edge()] = 0;
-            } else { // insert a temporary edge
-                // generate a random edge
-                Edge edge_temporary;
-                do {
-                    // generate the source_id
-                    uint32_t src_id = m_frequencies->search(unif_frequencies(m_random));
-                    int64_t old_frequency;
-                    m_frequencies->unset(src_id, &old_frequency);
-
-                    // generate the destination_id
-                    uniform_int_distribution<uint64_t> unif_tmp{0, (uint64_t) m_frequencies->total_count() - 1};
-                    uint32_t dst_id = m_frequencies->search(unif_tmp(m_random));
-                    assert(src_id != dst_id);
-
-                    // reset the frequency for the source_id
-                    m_frequencies->set(src_id, old_frequency);
-
-                    // check whether this edge is already contained in the graph
-                    if (dst_id < src_id) std::swap(src_id, dst_id);
-                    edge_temporary.m_source = src_id;
-                    edge_temporary.m_destination = dst_id;
-                } while (edges_stored.count(edge_temporary) > 0); // and repeat...
-
-                uint64_t edge_key = unif_uint64_t(m_random);
-                assert(edge_key != 0 && "0 is reserved for the edges of the final graph");
-                edges_stored[edge_temporary] = edge_key;
-                temporary_edges.insert(edge_key, edge_temporary);
-                output.emit(m_vertices[ edge_temporary.source() ], m_vertices[ edge_temporary.destination() ], 0.0);
-
-//                COUT_DEBUG("INSERT_TEMP " << edge_temporary.source() << " -> " << edge_temporary.destination());
-            };
-
-        } else { // remove a temporary edge
-            assert(!temporary_edges.empty() && "There are no temporary edges to remove");
-            uint64_t random_key = unif_uint64_t(m_random);
-
-            uint64_t edge_key;
-            Edge edge_temporary;
-            { // restrict the scope
-                auto it = temporary_edges.iterator(random_key, std::numeric_limits<uint64_t>::max());
-                if (it->has_next()) {
-                    it->next(&edge_key, &edge_temporary);
-                } else {
-                    edge_key = temporary_edges.key_min();
-                    assert(edge_key != 0 && "The value 0 is reserved for final edges");
-                    temporary_edges.find(edge_key, &edge_temporary);
-                }
+        // retrieve the next block of final edges
+        if (edges_final_offset >= edges_final_block_sz) {
+            if (edges_final_block >= 0) {
+                COUT_DEBUG("Deallocating a block of final edges " << edges_final_block << "/" << num_blocks_in_final_edges() << " ...");
+                free(m_edges_final[edges_final_block]);
+                m_edges_final[edges_final_block] = nullptr;
             }
-            assert(edges_stored.count(edge_temporary) > 0 && "Edge not present in the graph");
-            assert(edges_stored[edge_temporary] == edge_key && "Key mismatch");
 
-            // The (a,b)-tree may contain multiple edges with the same key (duplicates). In case we removed the
-            // wrong edge, reinsert it with a new key
-            Edge edge_removed;
-            while (temporary_edges.remove(edge_key, &edge_removed) && edge_removed != edge_temporary) {
-                uint64_t new_key = unif_uint64_t(m_random);
-                temporary_edges.insert(new_key, edge_removed);
-                edges_stored[edge_removed] = new_key;
-            };
+            edges_final_block++;
+            bool last_block = (edges_final_block == num_blocks_in_final_edges() - 1);
+            edges_final_block_sz = (last_block ? m_num_edges_final - edges_final_block * m_num_final_edges_per_block : m_num_final_edges_per_block);
+            edges_final_offset = 0;
+        }
 
-            edges_stored.erase(edge_temporary);
-            output.emit(m_vertices[ edge_temporary.source() ], m_vertices[ edge_temporary.destination() ], -1.0);
-        };
+        // Get next edge operation
+        WeightedEdge edge_final = m_edges_final[edges_final_block][edges_final_offset];
+        edges_final_position++;
+        edges_final_offset++;
+
+        // emit operation
+        output.emit(m_vertices[ edge_final.source() ], m_vertices[ edge_final.destination() ], edge_final.weight());
+        edges_stored[edge_final.edge()] = 0;
 
         num_ops_performed++;
     }
