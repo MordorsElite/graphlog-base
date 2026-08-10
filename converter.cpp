@@ -80,7 +80,7 @@ Converter::Converter(const std::string& path_input_graph, const std::string& pat
     init_temporary_vertices(&map_frequencies, array_frequencies.get(), sf_frequency);
     init_counting_tree(array_frequencies.get());
 
-    init_permute_edges_final(ptr_weighted_edges);
+    init_edges_final_no_permute(ptr_weighted_edges);
 
     init_writer(path_output_log);
 }
@@ -245,37 +245,36 @@ void Converter::init_counting_tree(void* ptr_array_frequencies){
     LOG("Counting tree created in " << timer);
 }
 
-void Converter::init_permute_edges_final(std::unique_ptr<WeightedEdge[]>& ptr_edges_final){
-    LOG("Permuting the edges in the final graph ... ");
+void Converter::init_edges_final_no_permute(std::unique_ptr<WeightedEdge[]>& ptr_edges_final) {
+    LOG("Converting the final edges into blocks ... ");
     Timer timer;
     timer.start();
-
-    unique_ptr<uint64_t[]> ptr_permutation { new uint64_t[m_num_edges_final] };
-    uint64_t* permutation = ptr_permutation.get();
-    for(uint64_t i = 0; i < m_num_edges_final; i++){
-        permutation[i] = i;
-    }
-    common::permute(permutation, m_num_edges_final, m_seed + 57);
 
     WeightedEdge* edges = ptr_edges_final.get();
 
     uint64_t num_blocks = num_blocks_in_final_edges();
-    m_edges_final = (WeightedEdge**) calloc(num_blocks, sizeof(WeightedEdge*));
-    if(m_edges_final == nullptr) throw bad_alloc();
+    m_edges_final = (WeightedEdge**)calloc(num_blocks, sizeof(WeightedEdge*));
+    if (m_edges_final == nullptr) throw bad_alloc();
 
-    for(uint64_t i = 0; i < num_blocks; i++){
-        bool last_block = (i == num_blocks -1);
-        uint64_t num_edges_in_block = last_block ? m_num_edges_final - i * m_num_final_edges_per_block : m_num_final_edges_per_block;
-        m_edges_final[i] = (WeightedEdge*) malloc(num_edges_in_block * sizeof(WeightedEdge));
-        if(m_edges_final[i] == nullptr) throw bad_alloc();
+    for (uint64_t i = 0; i < num_blocks; i++) {
+        bool last_block = (i == num_blocks - 1);
 
-        for(uint64_t j = 0; j < num_edges_in_block; j++){
-            m_edges_final[i][j] = edges[permutation[i * m_num_final_edges_per_block + j]];
+        uint64_t num_edges_in_block = 
+            last_block ? (m_num_edges_final - i * m_num_final_edges_per_block)
+                       : m_num_final_edges_per_block;
+
+        m_edges_final[i] = (WeightedEdge*)malloc(num_edges_in_block * sizeof(WeightedEdge));
+        if (m_edges_final[i] == nullptr) throw bad_alloc();
+
+        // Copy from the contiguous 1D array directly in order.
+        for (uint64_t j = 0; j < num_edges_in_block; j++) {
+            uint64_t src_idx = i * m_num_final_edges_per_block + j;
+            m_edges_final[i][j] = edges[src_idx];
         }
     }
 
     timer.stop();
-    LOG("Permutation completed in " << timer);
+    LOG("Conversion completed in " << timer);
 }
 
 void Converter::init_writer(const string& path_output){

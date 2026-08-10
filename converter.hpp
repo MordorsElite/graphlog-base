@@ -50,6 +50,7 @@ class Converter {
     void init_temporary_vertices(void* ptr_map_frequencies, void* ptr_array_frequencies, double sf_frequency);
     void init_counting_tree(void* ptr_array_frequencies);
     void init_permute_edges_final(std::unique_ptr<WeightedEdge[]>& ptr_edges_final);
+    void init_edges_final_no_permute(std::unique_ptr<WeightedEdge[]>& ptr_edges_final);
     void init_writer(const std::string& path_log_file);
 
     // total number of blocks in the final edges
