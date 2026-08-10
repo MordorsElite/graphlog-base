@@ -66,18 +66,21 @@ struct InitVertexRecord {
 };
 }
 
-Converter::Converter(const std::string& path_input_graph, const std::string& path_output_log, Writer& writer, double sf_frequency, double ef_vertices, double ef_edges, double aging_factor, uint64_t seed, const std::string& path_input_vertices_final, const std::string& path_input_vertices_edges) :
-    m_writer(writer), m_num_operations(0), m_seed(seed), m_random(m_seed){
+Converter::Converter(const std::string& path_input_graph, const std::string& path_output_log, Writer& writer, uint64_t input_num_vertices_final, uint64_t input_num_edges_final) :
+    m_writer(writer), m_num_operations(0){
     unordered_map<uint64_t, InitVertexRecord> map_frequencies;
     unique_ptr<WeightedEdge[]> ptr_weighted_edges;
 
-    init_read_input_graph(&ptr_weighted_edges, &map_frequencies, path_input_graph, ef_vertices);
+    init_read_input_graph(&ptr_weighted_edges, &map_frequencies, path_input_graph, input_num_vertices_final);
 
-    m_num_max_edges = ef_edges * m_num_edges_final;
-    m_num_operations = aging_factor * m_num_edges_final;
+    m_num_max_edges = input_num_edges_final;
+    m_num_operations = m_num_edges_final;
 
     unique_ptr<InitVertexRecord[]> array_frequencies { new InitVertexRecord[num_vertices()] };
-    init_temporary_vertices(&map_frequencies, array_frequencies.get(), sf_frequency);
+    
+    for (const auto& it : map_frequencies) {
+        array_frequencies[it.second.m_offset] = it.second; // copy (offset, frequency)
+    }
     init_counting_tree(array_frequencies.get());
 
     init_edges_final_no_permute(ptr_weighted_edges);
@@ -98,7 +101,7 @@ Converter::~Converter(){
     }
 }
 
-void Converter::init_read_input_graph(void* ptr_array_edges, void* ptr_frequencies, const std::string& path_input_graph, double expansion_factor_vertices) {
+void Converter::init_read_input_graph(void* ptr_array_edges, void* ptr_frequencies, const std::string& path_input_graph, uint64_t input_num_vertices_final) {
     LOG("Reading the input graph from: " << path_input_graph << " ... ");
     Timer timer;
     timer.start();
@@ -112,11 +115,14 @@ void Converter::init_read_input_graph(void* ptr_array_edges, void* ptr_frequenci
     if(reader.is_directed()) ERROR("Only undirected graphs are supported. The input graph `" << path_input_graph << "' is directed");
 
     string prop_num_vertices = reader.get_property("meta.vertices");
-    m_num_vertices_final = stoi(prop_num_vertices);
+    uint64_t total_vertices_in_input = stoi(prop_num_vertices);
+
+    m_num_vertices_final = input_num_vertices_final;
     string prop_num_edges = reader.get_property("meta.edges");
-    m_num_vertices_temporary = ceil( (expansion_factor_vertices - 1.0) * m_num_vertices_final );
+    m_num_vertices_temporary = total_vertices_in_input - input_num_vertices_final;
+
     if(num_vertices() > std::numeric_limits<uint32_t>::max()) {
-        ERROR("Too many vertices: " << num_vertices() << ", vertices in the final graph: " << num_final_vertices() << ", expansion factor: " << expansion_factor_vertices);
+        ERROR("Too many vertices: " << num_vertices() << ", vertices in the final graph: " << num_final_vertices());
     }
 
     m_num_edges_final = stoi(prop_num_edges);
@@ -154,76 +160,13 @@ void Converter::init_read_input_graph(void* ptr_array_edges, void* ptr_frequenci
         edges_final[edge_next] = WeightedEdge{ src_id, dst_id, weight };
         edge_next++;
     }
-    m_num_vertices_final = vertex_next; // actual number of vertices read in the final graph
+    // This next line no longer applies with, because the input vertices contain both final and temp vertices
+    //m_num_vertices_final = vertex_next; // actual number of vertices read in the final graph
     m_num_edges_final = edge_next; // actual number of edges read from the final graph
     cout << "The final graph will contain " << num_final_vertices() << " vertices and " << m_num_edges_final << " edges" << endl;
 
     timer.stop();
     LOG("Input graph parsed in " << timer);
-}
-
-void Converter::init_temporary_vertices(void* ptr_map_frequencies, void* ptr_array_frequencies, double sf_frequency){
-    LOG("Generating " << num_temporary_vertices() << " (" << 100.0 * num_temporary_vertices() / num_vertices() << " %) non final vertices ... ");
-    Timer timer;
-    timer.start();
-
-    assert(ptr_map_frequencies != nullptr && ptr_array_frequencies != nullptr);
-    auto& map_frequencies = *reinterpret_cast<unordered_map<uint64_t, InitVertexRecord>*>(ptr_map_frequencies);
-    InitVertexRecord* __restrict array_frequencies = reinterpret_cast<InitVertexRecord*>(ptr_array_frequencies);
-
-    { // restrict the scope
-        uint64_t i = 0;
-        for(const auto& it : map_frequencies){
-            assert(m_vertices[it.second.m_offset] == it.first);
-            array_frequencies[i] = it.second;
-            array_frequencies[i].m_frequency *= sf_frequency;
-            i++;
-        }
-    }
-
-    if(num_temporary_vertices() > 0){
-        std::sort(array_frequencies, array_frequencies + num_final_vertices(), [](const InitVertexRecord& v1, const InitVertexRecord& v2){
-           return v1.m_frequency > v2.m_frequency;
-        });
-
-        uint64_t external_vertex_id = 1;
-        uint32_t offset_vertex_id = num_final_vertices();
-
-        int64_t pos_tail = num_vertices() -1;
-        int64_t pos_head = num_final_vertices() -1;
-        uint64_t remaining_free_spots = num_temporary_vertices();
-        while(remaining_free_spots > 0 && pos_tail > 0){
-            assert(pos_head >= 0);
-            if(remaining_free_spots * num_vertices() >= num_temporary_vertices() * pos_tail){
-
-                // interpolate the frequency w.r.t. the two neighbours
-                uint64_t vertex_freq = array_frequencies[pos_head].m_frequency;
-                if(pos_tail < num_vertices() -1){
-                    vertex_freq = (vertex_freq + array_frequencies[pos_tail +1].m_frequency) /2;
-                }
-                array_frequencies[pos_tail] = InitVertexRecord{offset_vertex_id, (uint32_t) vertex_freq};
-                remaining_free_spots--;
-
-                // generate the ID of the vertex to insert
-                while(map_frequencies.count(external_vertex_id) > 0){ external_vertex_id ++ ; }
-                m_vertices[offset_vertex_id] = external_vertex_id;
-//                COUT_DEBUG("Temporary vertex: " << external_vertex_id << " [internal id: " << offset_vertex_id << "], frequency: " << vertex_freq);
-
-                offset_vertex_id++;
-                external_vertex_id++;
-            } else {
-                array_frequencies[pos_tail] = array_frequencies[pos_head];
-                pos_head--;
-
-//                COUT_DEBUG("Final vertex: " << m_vertices[array_frequencies[pos_tail].m_offset] << " [internal id: " << array_frequencies[pos_tail].m_offset << "], frequency: " << array_frequencies[pos_tail].m_frequency);
-            }
-
-            pos_tail--;
-        }
-    }
-
-    timer.stop();
-    LOG("Vertices generated in " << timer);
 }
 
 void Converter::init_counting_tree(void* ptr_array_frequencies){

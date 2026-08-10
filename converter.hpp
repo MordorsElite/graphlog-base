@@ -46,8 +46,7 @@ class Converter {
     std::unordered_map<Edge, bool> m_edges_present; // edges present during the creation of the graph
     std::mt19937_64 m_random;
 
-    void init_read_input_graph(void* ptr_edges_final, void* ptr_frequencies, const std::string& path_input_graph, double ef_vertices);
-    void init_temporary_vertices(void* ptr_map_frequencies, void* ptr_array_frequencies, double sf_frequency);
+    void init_read_input_graph(void* ptr_edges_final, void* ptr_frequencies, const std::string& path_input_graph, uint64_t input_num_edges_final);
     void init_counting_tree(void* ptr_array_frequencies);
     void init_permute_edges_final(std::unique_ptr<WeightedEdge[]>& ptr_edges_final);
     void init_edges_final_no_permute(std::unique_ptr<WeightedEdge[]>& ptr_edges_final);
@@ -61,7 +60,7 @@ class Converter {
 
 public:
     // Constructor
-    Converter(const std::string& path_input_graph, const std::string& path_output_log, Writer& writer, double sf_frequencies, double ef_vertices, double ef_edges, double aging_factor, uint64_t seed, const std::string& path_input_vertices_final, const std::string& path_input_vertices_edges);
+    Converter(const std::string& path_input_graph, const std::string& path_output_log, Writer& writer, uint64_t input_num_vertices_final, uint64_t input_num_edges_final);
 
     // Destructor
     ~Converter();
