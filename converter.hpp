@@ -34,7 +34,6 @@ class Converter {
 
     uint64_t m_num_operations; // total number of operations (insertions/deletions of edges) to create
     uint64_t m_num_max_edges; // max number of edges that can be stored in the graph
-    const uint64_t m_seed; // random Converter seed
 
     uint64_t* m_vertices = nullptr; // vertices ID
     uint64_t m_num_vertices_final = 0; // num vertices that actually belong to the final graph

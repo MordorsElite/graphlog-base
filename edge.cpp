@@ -42,7 +42,7 @@ bool Edge::operator>=(const Edge& e) const noexcept {
 
 WeightedEdge::WeightedEdge() : WeightedEdge(0,0,0){ }
 WeightedEdge::WeightedEdge(uint32_t source, uint32_t destination, double weight) : Edge{source, destination}, m_weight(weight){
-    assert(m_weight >= 0 && "Expected a non-negative value");
+    assert(m_weight >= -1 && "Expected a value of -1 or >= 0");
 }
 
 Edge WeightedEdge::edge() const {

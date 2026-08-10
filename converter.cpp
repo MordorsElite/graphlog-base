@@ -264,13 +264,11 @@ uint64_t Converter::generate0() {
     ABTree<uint64_t, Edge> temporary_edges; // edges that need to be removed before the end of the generation process
     unordered_map<Edge, uint64_t> edges_stored; // edges currently stored in the graph
     OutputBuffer output{m_writer}; // output buffer
-//    uniform_real_distribution<double> unif_real{0., 1.}; // uniform distribution in [0, 1]
     uniform_int_distribution<uint64_t> unif_uint64_t{1, numeric_limits<uint64_t>::max()};
     uniform_int_distribution<uint64_t> unif_frequencies{0, (uint64_t) m_frequencies->total_count() - 1};
 
     int last_progress_reported = 0;
     int64_t edges_final_block = -1, edges_final_offset = 0, edges_final_block_sz = 0, edges_final_position = 0;
-//    double prob_bump = 1.0; // heuristics to bump up the probability of inserting a final edge
     uint64_t num_ops_performed = 0;
 
     while (num_ops_performed < m_num_operations || /* there are still edges to delete */ !temporary_edges.empty()) {
