@@ -39,6 +39,11 @@ double g_ef_edges = 1.0; // expansion factor for the edges in the graph
 double g_ef_vertices = 1.2; // expansion factor for the vertices in the graph
 string g_path_input; // path to the input graph, in the Graphalytics format
 string g_path_output; // path where to store the log of updates
+
+string g_edges_input;           // path to input edges
+string g_vertices_final_input;  // path to input vertices (final)
+string g_vertices_temp_input;   // path to input vertices (temporary)
+
 uint64_t g_seed = std::random_device{}(); // the seed to use for the random generator
 
 // logging
@@ -83,7 +88,7 @@ static void parse_command_line_arguments(int argc, char* argv[]){
     using namespace cxxopts;
 
     Options options(argv[0], "Graph Generator of Updates (graphlog): create a log of edge updates based on the distribution of the input graph");
-    options.custom_help(" [options] <input> <output>");
+    options.custom_help(" [options] <graph_name> <output> <g_edges_input> <g_vertices_final_input> <g_vertices_temp_input>");
     options.add_options()
         ("a, aging", "Number of operations to produce w.r.t. the size of the loaded graph", value<double>()->default_value(to_string(g_aging)))
         ("e, efe", "Expansion factor for the edges in the graph", value<double>()->default_value(to_string(g_ef_edges)))
@@ -99,14 +104,21 @@ static void parse_command_line_arguments(int argc, char* argv[]){
         exit(EXIT_SUCCESS);
     }
 
-    if( argc != 3 ) {
+    if( argc != 6 ) {
         INVALID_ARGUMENT("Invalid number of arguments: " << argc << ". Expected format: " << argv[0] << " [options] <input> <output>");
     }
     if(!common::filesystem::file_exists(argv[1])){
         INVALID_ARGUMENT("The given input graph does not exist: `" << argv[1] << "'");
     }
+
     g_path_input = argv[1];
     g_path_output = argv[2];
+
+    g_edges_input = argv[3];         
+    g_vertices_final_input = argv[4];
+    g_vertices_temp_input = argv[5]; 
+
+
 
     if(parsed_args.count("aging") > 0){
         double value = parsed_args["aging"].as<double>();
@@ -137,7 +149,12 @@ static void parse_command_line_arguments(int argc, char* argv[]){
     }
 
     cout << "Path input graph: " << g_path_input << "\n";
-    cout << "Path output log: " << g_path_output << "\n";
+    cout << "Path output log: " << g_vertices_final_input << "\n";
+
+    cout << "g_edges_input: " << g_edges_input << "\n";
+    cout << "g_vertices_final_input: " << g_vertices_final_input << "\n";
+    cout << "g_vertices_temp_input: " << g_vertices_temp_input << "\n";
+
     cout << "Aging factor: " << g_aging << "\n";
     cout << "Expansion factor for the vertices: " << g_ef_vertices << "\n";
     cout << "Expansion factor for the edges: " << g_ef_edges << "\n";
