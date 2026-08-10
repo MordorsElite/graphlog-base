@@ -261,30 +261,21 @@ uint64_t Converter::generate0() {
     Timer timer;
     timer.start();
 
-    ABTree<uint64_t, Edge> temporary_edges; // edges that need to be removed before the end of the generation process
-    unordered_map<Edge, uint64_t> edges_stored; // edges currently stored in the graph
     OutputBuffer output{m_writer}; // output buffer
-    uniform_int_distribution<uint64_t> unif_uint64_t{1, numeric_limits<uint64_t>::max()};
-    uniform_int_distribution<uint64_t> unif_frequencies{0, (uint64_t) m_frequencies->total_count() - 1};
 
     int last_progress_reported = 0;
     int64_t edges_final_block = -1, edges_final_offset = 0, edges_final_block_sz = 0, edges_final_position = 0;
     uint64_t num_ops_performed = 0;
 
-    while (num_ops_performed < m_num_operations || /* there are still edges to delete */ !temporary_edges.empty()) {
+    while (num_ops_performed < m_num_operations) {
         assert(edges_final_position <= m_num_edges_final);
-        uint64_t num_missing_final_edges = m_num_edges_final - edges_final_position;
 
         // Report progress
         if (static_cast<int>(100.0 * num_ops_performed / m_num_operations) > last_progress_reported) {
             last_progress_reported = 100.0 * num_ops_performed / m_num_operations;
             LOG("Progress: " << num_ops_performed << "/" << m_num_operations << " (" << last_progress_reported<< " %), "
-                     "edges final: " << edges_final_position << "/" << m_num_edges_final << " (" << 100.0 * edges_final_position / m_num_edges_final << " %), "
-                     "edges temp: " << temporary_edges.size() << "/" << edges_stored.size() << " (" << 100.0 * temporary_edges.size() / edges_stored.size() << " %), "
-                     "ht size: " << edges_stored.size() << " (ff: " << 100.0 * edges_stored.load_factor() << " %), "
-                     "abtree footprint: " << temporary_edges.memory_footprint() / 1024 / 1024 << " MB, "
-                     "elapsed time: " << timer
-             );
+                "elapsed time: " << timer
+            );
         }
 
         //-- Directly insert all operations --//
@@ -310,16 +301,11 @@ uint64_t Converter::generate0() {
 
         // emit operation
         output.emit(m_vertices[ edge_final.source() ], m_vertices[ edge_final.destination() ], edge_final.weight());
-        edges_stored[edge_final.edge()] = 0;
 
         num_ops_performed++;
     }
 
-    assert(temporary_edges.empty() && "There are still temporary edges");
     assert(edges_final_position == m_num_edges_final && "Not all final edges have been inserted");
-    assert(edges_stored.size() == m_num_edges_final &&
-               "The hash table to keep track which edges are in the graph does not match the edges that "
-               "should be present at the end of the generation process");
     assert(num_ops_performed >= m_num_operations && "Generated less operations than what requested");
 
     timer.stop();
