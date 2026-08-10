@@ -46,7 +46,6 @@ class Converter {
     std::mt19937_64 m_random;
 
     void init_read_input_graph(void* ptr_edges_final, void* ptr_frequencies, const std::string& path_input_graph, uint64_t input_num_edges_final);
-    void init_counting_tree(void* ptr_array_frequencies);
     void init_permute_edges_final(std::unique_ptr<WeightedEdge[]>& ptr_edges_final);
     void init_edges_final_no_permute(std::unique_ptr<WeightedEdge[]>& ptr_edges_final);
     void init_writer(const std::string& path_log_file);
