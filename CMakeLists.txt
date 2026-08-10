@@ -43,9 +43,10 @@ add_subdirectory(lib/common)
 add_executable(graphlog
     lib/cxxopts.hpp
     abtree.hpp
+    converter.cpp converter.hpp
     counting_tree.cpp counting_tree.hpp
     edge.cpp edge.hpp
-    generator.cpp generator.hpp
+    #generator.cpp generator.hpp
     graphalytics_reader.cpp graphalytics_reader.hpp
     main.cpp
     output_buffer.cpp output_buffer.hpp

@@ -92,10 +92,10 @@ static void parse_command_line_arguments(int argc, char* argv[]){
     using namespace cxxopts;
 
     Options options(argv[0], "Graph Generator of Updates (graphlog): create a log of edge updates based on the distribution of the input graph");
-    options.custom_help(" [options] <graph_name> <output>");
+    options.custom_help("[options] <input> <output>");
     options.add_options()
-        ("e, final-edges", "Final number of edges in the input graph", value<uint64_t>())
-        ("v, final-vertices", "Final number of vertices in the input graph", value<uint64_t>())
+        ("e, edges-final", "Final number of edges in the input graph", value<uint64_t>())
+        ("v, vertices-final", "Final number of vertices in the input graph", value<uint64_t>())
         ("h, help", "Show this help menu")
     ;
 
@@ -116,12 +116,12 @@ static void parse_command_line_arguments(int argc, char* argv[]){
     g_path_input = argv[1];
     g_path_output = argv[2];
 
-    if(parsed_args.count("final-vertices") > 0){
-        input_num_vertices_final = parsed_args["seed"].as<uint64_t>();
+    if(parsed_args.count("vertices-final") > 0){
+        input_num_vertices_final = parsed_args["vertices-final"].as<uint64_t>();
     }
 
-    if(parsed_args.count("final-edges") > 0){
-        input_num_edges_final = parsed_args["seed"].as<uint64_t>();
+    if(parsed_args.count("edges-final") > 0){
+        input_num_edges_final = parsed_args["edges-final"].as<uint64_t>();
     }
 
     cout << "Path input graph: " << g_path_input << "\n";

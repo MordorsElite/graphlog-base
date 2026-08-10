@@ -140,8 +140,13 @@ public:
         if(m_is_weighted){
             while(isspace(next[0])) next++;
             current = next;
-            if(!is_number(current)) ERROR("line: `" << current_line << "', cannot read the weight");
-            weight = strtod(current, nullptr);
+            if(is_number(current)) {
+                weight = strtod(current, nullptr);
+            } else if(current[0] == '-') { 
+                weight = strtod(current, nullptr);
+            } else {
+                ERROR("line: `" << current_line << "', cannot read the weight");
+            }
         } else {
             weight = 0;
         }
