@@ -113,9 +113,9 @@ void Converter::init_read_input_graph(void* ptr_array_edges, void* ptr_frequenci
     if(reader.is_directed()) ERROR("Only undirected graphs are supported. The input graph `" << path_input_graph << "' is directed");
 
     string prop_num_vertices = reader.get_property("meta.vertices");
-    uint64_t total_vertices_in_input = stoi(prop_num_vertices);
+    m_num_vertices_total = stoi(prop_num_vertices);
     m_num_vertices_final = input_num_vertices_final;
-    m_num_vertices_temporary = total_vertices_in_input - input_num_vertices_final;
+    m_num_vertices_temporary = m_num_vertices_total - input_num_vertices_final;
 
     string prop_num_edges = reader.get_property("meta.edges");
     m_num_edges_total = stoi(prop_num_edges);
@@ -123,6 +123,13 @@ void Converter::init_read_input_graph(void* ptr_array_edges, void* ptr_frequenci
     if(num_vertices() > std::numeric_limits<uint32_t>::max()) {
         ERROR("Too many vertices: " << num_vertices() << ", vertices in the final graph: " << num_final_vertices());
     }
+
+    cout << "m_num_vertices_total: " << m_num_vertices_total << endl;
+    cout << "m_num_vertices_final: " << m_num_vertices_final << endl;
+    cout << "m_num_vertices_temporary: " << m_num_vertices_temporary << endl;
+
+    cout << "m_num_edges_total: " << m_num_edges_total << endl;
+    cout << "m_num_edges_final: " << m_num_edges_final << endl;
 
     COUT_DEBUG("num vertices final graph: " << num_final_vertices() << ", num edges final graph: " << m_num_edges_final);
 

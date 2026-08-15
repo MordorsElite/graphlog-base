@@ -38,6 +38,7 @@ class Converter {
     uint64_t* m_vertices = nullptr; // vertices ID
     uint64_t m_num_vertices_final = 0; // num vertices that actually belong to the final graph
     uint64_t m_num_vertices_temporary = 0; // num vertices that are temporary, it will need to be removed from the final graphs
+    uint64_t m_num_vertices_total = 0; // total number of, so final + temporary vertices
     static constexpr uint64_t m_num_final_edges_per_block = (1ull << 23); // number of `final' edges per block, 8M
     WeightedEdge** m_edges_final = nullptr; // list of vertices that belong to the final graph
     uint64_t m_num_edges_final = 0; // final number of edges
